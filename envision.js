@@ -7617,7 +7617,7 @@ envision.components = envision.components || {};
  */
 envision.templates = envision.templates || {};
 
-(function () {
+$(document).ready(function () {
 
 var
   V = envision;
@@ -7635,8 +7635,8 @@ function processData (options) {
 
 function getDefaults () {
   return {
-    price : {
-      name : 'envision-finance-price',
+    heat : {
+      name : 'envision-book-heat',
       config : {
         'lite-lines' : {
           lineWidth : 1,
@@ -7658,31 +7658,18 @@ function getDefaults () {
           noTicks : 4,
           showLabels : true,
           min : 0
-        }
-      },
-      processData : processData
-    },
-    volume : {
-      name : 'envision-finance-volume',
-      config : {
-        whiskers : {
-          show : true,
-          lineWidth : 2
         },
-        mouse: {
-          track: true,
-          trackY: false,
-          trackAll: true
-        },
-        yaxis : {
-          autoscale : true,
-          autoscaleMargin : 0.5 
+        grid : {
+          verticalLines : true,
+          horizontalLines : true,
+          outlineWidth : 0,
+          labelMargin : 0
         }
       },
       processData : processData
     },
     summary : {
-      name : 'envision-finance-summary',
+      name : 'envision-book-summary',
       config : {
         'lite-lines' : {
           show : true,
@@ -7711,75 +7698,73 @@ function getDefaults () {
       }
     },
     connection : {
-      name : 'envision-finance-connection',
+      name : 'envision-book-connection',
       adapterConstructor : V.components.QuadraticDrawing
     }
   };
 }
 
-function Finance (options) {
+function TplBook (options) {
 
   var
     data = options.data,
     defaults = getDefaults(),
-    vis = new V.Visualization({name : 'envision-finance'}),
+    vis = new V.Visualization({name : 'envision-book'}),
     selection = new V.Interaction(),
     hit = new V.Interaction(),
-    price, volume, connection, summary;
+    heat, connection, summary;
 
   if (options.defaults) {
     defaults = Flotr.merge(options.defaults, defaults);
   }
 
-  defaults.price.data = data.price;
-  defaults.volume.data = data.volume;
+  defaults.heat.data = data.heat;
   defaults.summary.data = data.summary;
 
-  defaults.price.config.mouse.trackFormatter = options.trackFormatter || function (o) {
+  defaults.heat.config.mouse.trackFormatter = options.trackFormatter || function (o) {
 
     var
       index = o.index,
       value;
 
-    if (price.api.preprocessor) {
-      index += price.api.preprocessor.start;
+    if (heat.api.preprocessor) {
+      index += heat.api.preprocessor.start;
     }
 
-    value = 'Price: $' + data.price[1][index] + ", Vol: " + data.volume[1][index];
+    value = 'Heat: ' + data.heat[1][index] + '° Word: ' + index;
 
     return value;
   };
+
   if (options.xTickFormatter) {
     defaults.summary.config.xaxis.tickFormatter = options.xTickFormatter;
   }
-  defaults.price.config.yaxis.tickFormatter = options.yTickFormatter || function (n) {
-    return '$' + n;
+
+  defaults.heat.config.yaxis.tickFormatter = options.yTickFormatter || function (n) {
+    return n + '°';
   };
 
-  price = new V.Component(defaults.price);
-  volume = new V.Component(defaults.volume);
+  heat = new V.Component(defaults.heat);
   connection = new V.Component(defaults.connection);
   summary = new V.Component(defaults.summary);
 
   // Render visualization
   vis
-    .add(price)
-    .add(volume)
+    .add(heat)
     .add(connection)
     .add(summary)
     .render(options.container);
 
   // Define the selection zooming interaction
   selection
-    .follower(price)
-    .follower(volume)
+    .follower(heat)
     .follower(connection)
     .leader(summary)
     .add(V.actions.selection, options.selectionCallback ? { callback : options.selectionCallback } : null);
 
   // Define the mouseover hit interaction
   hit
-    .group([price, volume])
+    .group([heat])
     .add(V.actions.hit);
 
   // Optional initial selection
@@ -7791,165 +7776,11 @@ function Finance (options) {
   this.vis = vis;
   this.selection = selection;
   this.hit = hit;
-  this.price = price;
-  this.volume = volume;
+  this.heat = heat;
+  
   this.summary = summary;
 }
 
-V.templates.Finance = Finance;
+V.templates.TplBook = TplBook;
 
-})();
-
-(function () {
-
-var
-  V = envision;
-
-function getDefaults () {
-  return {
-    detail : {
-      name : 'envision-timeseries-detail',
-      config : {
-        'lite-lines' : {
-            lineWidth : 1,
-            show : true
-        }
-      }
-    },
-    summary : {
-      name : 'envision-timeseries-summary',
-      config : {
-        'lite-lines' : {
-            lineWidth : 1,
-            show : true
-        },
-        handles : {
-          show : true
-        },
-        selection : {
-          mode : 'x'
-        },
-        yaxis : {
-          autoscale : true,
-          autoscaleMargin : 0.1
-        }
-      }
-    },
-    connection : {
-      name : 'envision-timeseries-connection',
-      adapterConstructor : V.components.QuadraticDrawing
-    }
-  };
-}
-
-function TimeSeries (options) {
-
-  var
-    data = options.data,
-    defaults = getDefaults(),
-    vis = new V.Visualization({name : 'envision-timeseries'}),
-    selection = new V.Interaction(),
-    detail, summary, connection;
-
-  // Fill Defaults
-  if (options.defaults) {
-    defaults = Flotr.merge(options.defaults, defaults);
-  }
-  defaults.detail.data = data.detail;
-  defaults.summary.data = data.summary;
-
-  // Build Components
-  detail = new V.Component(defaults.detail);
-  connection = new V.Component(defaults.connection);
-  summary = new V.Component(defaults.summary);
-
-  // Render visualization
-  vis
-    .add(detail)
-    .add(connection)
-    .add(summary)
-    .render(options.container);
-
-  // Selection action
-  selection
-    .follower(detail)
-    .follower(connection)
-    .leader(summary)
-    .add(V.actions.selection, options.selectionCallback ? { callback : options.selectionCallback } : null);
-
-  // Optional initial selection
-  if (options.selection) {
-    summary.trigger('select', options.selection);
-  }
-
-  this.vis = vis;
-  this.selection = selection;
-  this.detail = detail;
-  this.summary = summary;
-}
-
-V.templates.TimeSeries = TimeSeries;
-
-})();
-
-(function () {
-
-var
-  V = envision,
-  Zoom;
-
-function defaultsZoom () {
-  return {
-    name : 'zoom'
-  };
-}
-
-function defaultsSummary () {
-  return {
-    name : 'summary',
-    config : {
-      handles : { show : true },
-      selection : { mode : 'x'}
-    }
-  };
-}
-
-function getDefaults (options, defaults) {
-  var o = _.defaults(options, defaults);
-  o.flotr = _.defaults(o.flotr, defaults.flotr);
-  return o;
-}
-
-Zoom = function (options) {
-
-  var
-    vis = new V.Visualization(),
-    zoom = new V.Component(getDefaults(options.zoom || {}, defaultsZoom())),
-    summary = new V.Component(getDefaults(options.summary || {}, defaultsSummary())),
-    interaction = new V.Interaction({leader : summary});
-
-  vis
-    .add(zoom)
-    .add(summary);
-
-  interaction.add(V.actions.selection);
-  interaction.follower(zoom);
-
-  this.vis = vis;
-  this.interaction = interaction;
-
-  if (options.container) {
-    this.render(options.container);
-  }
-};
-
-Zoom.prototype = {
-  render : function (container) {
-    this.vis.render(container);
-  }
-};
-
-V.templates.Zoom = Zoom;
-
-})();
-;
+});
